@@ -172,6 +172,7 @@ public class MainActivity extends Activity {
         public void onShowCustomView(View view, CustomViewCallback callback) {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
             webView.setVisibility(View.INVISIBLE);
+            btn.setVisibility(View.GONE);
             // 如果一个视图已经存在，那么立刻终止并新建一个
             if (xCustomView != null) {
                 callback.onCustomViewHidden();
@@ -195,6 +196,7 @@ public class MainActivity extends Activity {
             video_fullView.setVisibility(View.GONE);
             xCustomViewCallback.onCustomViewHidden();
             webView.setVisibility(View.VISIBLE);
+            btn.setVisibility(View.VISIBLE);
         }
 
         // 视频加载时进程loading
