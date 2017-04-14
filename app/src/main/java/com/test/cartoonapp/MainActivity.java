@@ -1,11 +1,14 @@
 package com.test.cartoonapp;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.ProgressDialog;
+import android.content.DialogInterface;
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -15,8 +18,19 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.AdapterView;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ListView;
 import android.widget.Toast;
+
+import com.slidingmenu.lib.SlidingMenu;
+import com.test.cartoonapp.adapter.SlidAdapter;
+import com.test.cartoonapp.bean.CollectionBean;
+import com.test.cartoonapp.sql.CollectionDAO;
+
+import java.util.List;
 
 public class MainActivity extends Activity {
     private WebView webView;
@@ -26,6 +40,9 @@ public class MainActivity extends Activity {
     private WebChromeClient.CustomViewCallback xCustomViewCallback;
     private myWebChromeClient xwebchromeclient;
     private boolean isExit = false;
+    CollectionDAO dao;
+    private Button btn;
+    private SlidingMenu slidingMeun;
     private Handler exithandler = new Handler(){
         @Override
         public void handleMessage(Message msg) {
@@ -48,14 +65,28 @@ public class MainActivity extends Activity {
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_main);
-
+        dao = new CollectionDAO(this);
         waitdialog = new ProgressDialog(this);
         waitdialog.setTitle("提示");
-        waitdialog.setMessage("视频页面加载中...");
+        waitdialog.setMessage("页面加载中...");
         waitdialog.setIndeterminate(true);
         waitdialog.setCancelable(true);
         waitdialog.show();
 
+        initSlidingMeun();
+
+        btn = (Button) findViewById(R.id.main_btn_sc);
+        btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Log.e("test-MainActivity:", webView.getUrl());
+                if(!dao.judge(webView.getUrl())){
+                    Toast.makeText(MainActivity.this, "已存在这个链接", Toast.LENGTH_SHORT).show();
+                }else{
+                    getDialog();
+                }
+            }
+        });
         webView = (WebView) findViewById(R.id.main_wv);
         video_fullView = (FrameLayout) findViewById(R.id.video_fullView);
 
@@ -75,17 +106,28 @@ public class MainActivity extends Activity {
         webView.setWebViewClient(new myWebViewClient());
         webView.loadUrl("http://m.dilidili.wang/");
     }
-
+    public void initSlidingMeun(){
+        slidingMeun = new SlidingMenu(this);
+        slidingMeun.setMode(SlidingMenu.LEFT);
+        slidingMeun.setTouchModeAbove(SlidingMenu.TOUCHMODE_FULLSCREEN);
+        slidingMeun.setBehindOffsetRes(R.dimen.slid_cc);
+        slidingMeun.attachToActivity(this,SlidingMenu.SLIDING_CONTENT);
+        slidingMeun.setMenu(R.layout.slidingmeun);
+        ListView lv = (ListView) slidingMeun.findViewById(R.id.slid_lv);
+        final List<CollectionBean> list = dao.list();
+        lv.setAdapter(new SlidAdapter(this,list));
+        lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                webView.loadUrl(list.get(i).getUrl());
+                slidingMeun.toggle();
+            }
+        });
+    }
     public class myWebViewClient extends WebViewClient {
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, String url) {
-            if("http://www.005.tv/".equals(url)){
-
-            }else if("http://bbs.005.tv/".equals(url)){
-
-            }else{
-                view.loadUrl(url);
-            }
+            view.loadUrl(url);
             return false;
         }
 
@@ -96,6 +138,32 @@ public class MainActivity extends Activity {
         }
     }
 
+    public void getDialog(){
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        final EditText et = new EditText(this);
+        builder
+                .setView(et)
+                .setTitle("请输入备注")
+                .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        boolean result = dao.save(new CollectionBean(et.getText().toString(),webView.getUrl()));
+                        if(result){
+                            Toast.makeText(MainActivity.this, "保存成功", Toast.LENGTH_SHORT).show();
+                        }else{
+                            Toast.makeText(MainActivity.this, "保存失败", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                })
+                .setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+
+                    }
+                });
+        AlertDialog dialog = builder.create();
+        dialog.show();
+    }
     public class myWebChromeClient extends WebChromeClient {
         private View xprogressvideo;
 
