@@ -8,7 +8,6 @@ import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -32,7 +31,7 @@ import com.test.cartoonapp.sql.CollectionDAO;
 
 import java.util.List;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements View.OnClickListener{
     private WebView webView;
     private FrameLayout video_fullView;// 全屏时视频加载view
     private View xCustomView;
@@ -41,7 +40,8 @@ public class MainActivity extends Activity {
     private myWebChromeClient xwebchromeclient;
     private boolean isExit = false;
     CollectionDAO dao;
-    private Button btn;
+    private ListView lv;
+    private Button btnss,btnsx;
     private SlidingMenu slidingMeun;
     private Handler exithandler = new Handler(){
         @Override
@@ -58,6 +58,24 @@ public class MainActivity extends Activity {
             System.exit(0);
         }
     }
+    public void initProgressDialog(){
+        waitdialog = new ProgressDialog(this);
+        waitdialog.setTitle("提示");
+        waitdialog.setMessage("页面加载中...");
+        waitdialog.setIndeterminate(true);
+        waitdialog.setCancelable(true);
+        waitdialog.show();
+    }
+    public void initView(){
+        dao = new CollectionDAO(this);
+        btnss = (Button) findViewById(R.id.main_btn_sc);
+        btnsx = (Button) findViewById(R.id.main_btn_sx);
+        webView = (WebView) findViewById(R.id.main_wv);
+        video_fullView = (FrameLayout) findViewById(R.id.video_fullView);
+
+        btnss.setOnClickListener(this);
+        btnsx.setOnClickListener(this);
+    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -65,31 +83,17 @@ public class MainActivity extends Activity {
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_main);
-        dao = new CollectionDAO(this);
-        waitdialog = new ProgressDialog(this);
-        waitdialog.setTitle("提示");
-        waitdialog.setMessage("页面加载中...");
-        waitdialog.setIndeterminate(true);
-        waitdialog.setCancelable(true);
-        waitdialog.show();
-
+        initView();
+        initProgressDialog();
         initSlidingMeun();
+        initWebView();
 
-        btn = (Button) findViewById(R.id.main_btn_sc);
-        btn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Log.e("test-MainActivity:", webView.getUrl());
-                if(!dao.judge(webView.getUrl())){
-                    Toast.makeText(MainActivity.this, "已存在这个链接", Toast.LENGTH_SHORT).show();
-                }else{
-                    getDialog();
-                }
-            }
-        });
-        webView = (WebView) findViewById(R.id.main_wv);
-        video_fullView = (FrameLayout) findViewById(R.id.video_fullView);
 
+
+
+    }
+
+    public void initWebView(){
         WebSettings ws = webView.getSettings();
         ws.setBuiltInZoomControls(true);// 隐藏缩放按钮
         ws.setUseWideViewPort(true);// 可任意比例缩放
@@ -106,14 +110,15 @@ public class MainActivity extends Activity {
         webView.setWebViewClient(new myWebViewClient());
         webView.loadUrl("http://m.dilidili.wang/");
     }
+
     public void initSlidingMeun(){
         slidingMeun = new SlidingMenu(this);
         slidingMeun.setMode(SlidingMenu.LEFT);
-        slidingMeun.setTouchModeAbove(SlidingMenu.TOUCHMODE_FULLSCREEN);
+        slidingMeun.setTouchModeAbove(SlidingMenu.TOUCHMODE_MARGIN);
         slidingMeun.setBehindOffsetRes(R.dimen.slid_cc);
         slidingMeun.attachToActivity(this,SlidingMenu.SLIDING_CONTENT);
         slidingMeun.setMenu(R.layout.slidingmeun);
-        ListView lv = (ListView) slidingMeun.findViewById(R.id.slid_lv);
+        lv = (ListView) slidingMeun.findViewById(R.id.slid_lv);
         final List<CollectionBean> list = dao.list();
         lv.setAdapter(new SlidAdapter(this,list));
         lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -124,6 +129,24 @@ public class MainActivity extends Activity {
             }
         });
     }
+
+    @Override
+    public void onClick(View view) {
+        switch(view.getId()){
+            case R.id.main_btn_sc:
+                if(!dao.judge(webView.getUrl())){
+                    Toast.makeText(MainActivity.this, "已存在这个链接", Toast.LENGTH_SHORT).show();
+                }else{
+                    getDialog();
+                }
+                break;
+            case R.id.main_btn_sx:
+                webView.loadUrl(webView.getUrl());
+                break;
+        }
+    }
+
+
     public class myWebViewClient extends WebViewClient {
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, String url) {
@@ -137,6 +160,8 @@ public class MainActivity extends Activity {
             waitdialog.dismiss();
         }
     }
+
+
 
     public void getDialog(){
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -164,6 +189,9 @@ public class MainActivity extends Activity {
         AlertDialog dialog = builder.create();
         dialog.show();
     }
+
+
+
     public class myWebChromeClient extends WebChromeClient {
         private View xprogressvideo;
 
@@ -172,7 +200,8 @@ public class MainActivity extends Activity {
         public void onShowCustomView(View view, CustomViewCallback callback) {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
             webView.setVisibility(View.INVISIBLE);
-            btn.setVisibility(View.GONE);
+            btnss.setVisibility(View.GONE);
+            btnsx.setVisibility(View.GONE);
             // 如果一个视图已经存在，那么立刻终止并新建一个
             if (xCustomView != null) {
                 callback.onCustomViewHidden();
@@ -196,7 +225,8 @@ public class MainActivity extends Activity {
             video_fullView.setVisibility(View.GONE);
             xCustomViewCallback.onCustomViewHidden();
             webView.setVisibility(View.VISIBLE);
-            btn.setVisibility(View.VISIBLE);
+            btnss.setVisibility(View.VISIBLE);
+            btnsx.setVisibility(View.VISIBLE);
         }
 
         // 视频加载时进程loading
@@ -228,6 +258,7 @@ public class MainActivity extends Activity {
         xwebchromeclient.onHideCustomView();
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
     }
+
 
     @Override
     protected void onResume() {
